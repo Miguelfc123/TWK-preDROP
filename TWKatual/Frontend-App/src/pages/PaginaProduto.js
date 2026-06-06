@@ -8,8 +8,8 @@ const produtosIniciais = [
     id: 1,
     name: 'buda',
     price: '75,00',
-    oldPrice: '100,00',
-    image: process.env.PUBLIC_URL + '/buda.png',
+    oldPrice: '550,00',
+    image: '/buda.png',
     status: '-47%',
     category: 'Início > Buda >',
   },
@@ -17,8 +17,8 @@ const produtosIniciais = [
     id: 3,
     name: 'more money azul',
     price: '75,00',
-    oldPrice: '100,00',
-    image: process.env.PUBLIC_URL + '/more money azul.png',
+    oldPrice: '270,00',
+    image: '/more money azul.png',
     status: 'COMPRAR MAIS, PAGAR MENOS',
     category: 'Início > More Money >',
   },
@@ -26,8 +26,8 @@ const produtosIniciais = [
     id: 4,
     name: 'more money vermelha',
     price: '75,00',
-    oldPrice: '100,00',
-    image: process.env.PUBLIC_URL + '/more money vermelha.png',
+    oldPrice: '323,00',
+    image: '/more money vermelha.png',
     status: 'COMPRAR MAIS, PAGAR MENOS',
     category: 'Início > More Money >',
   },
@@ -35,8 +35,8 @@ const produtosIniciais = [
     id: 5,
     name: 'swag',
     price: '75,00',
-    oldPrice: '100,00',
-    image: process.env.PUBLIC_URL + '/swag.PNG',
+    oldPrice: '149,90',
+    image: '/swag.PNG',
     status: 'COMPRAR MAIS, PAGAR MENOS',
     category: 'Início > Swag >',
   },
@@ -45,7 +45,7 @@ const produtosIniciais = [
     name: 'TheEyes',
     price: '75,00',
     oldPrice: '',
-    image: process.env.PUBLIC_URL + '/TheEyes.png',
+    image: '/TheEyes.png',
     status: 'COMPRAR MAIS, PAGAR MENOS',
     category: 'Início > TheEyes >',
   }
@@ -64,7 +64,6 @@ function PaginaProduto() {
   const [opcoesFrete, setOpcoesFrete] = useState(null);
   const [freteSelecionado, setFreteSelecionado] = useState(null);
   const [erroFrete, setErroFrete] = useState('');
-  const [mostrarHistorico, setMostrarHistorico] = useState(true);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -95,45 +94,27 @@ function PaginaProduto() {
     try {
       const cleanCep = cep.replace(/\D/g, '');
 
-      // Consumindo a API pública do ViaCEP para obter a localidade (funciona nativamente no Vercel)
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      // Nova API de frete com suporte a produção
+      const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+      const apiUrl = process.env.REACT_APP_FREIGHT_API_URL || 
+        (isDevelopment ? 'http://localhost:3001' : '/api/frete');
+      const response = await fetch(`${apiUrl}/frete?cep=${cleanCep}`);
       const data = await response.json();
 
-      if (data.erro) {
-        setErroFrete('CEP não encontrado. Verifique e tente novamente.');
+      if (!data.sucesso) {
+        setErroFrete(data.erro || 'CEP não encontrado.');
         setCalculandoFrete(false);
         return;
       }
 
-      const localTexto = `${data.localidade} - ${data.uf}`;
+      const localTexto = `${data.destino.cidade} - ${data.destino.uf}`;
 
-      // Simulando valores baseados no estado (Já que a API oficial dos Correios bloqueia acesso direto do navegador por CORS)
-      let valorPac = 15.90;
-      let prazoPac = 5;
-      let valorSedex = 35.90;
-      let prazoSedex = 2;
-
-      if (data.uf === 'SP') {
-        valorPac = 9.90;
-        prazoPac = 3;
-        valorSedex = 19.90;
-        prazoSedex = 1;
-      } else if (['RJ', 'MG', 'PR', 'SC', 'RS'].includes(data.uf)) {
-        valorPac = 18.90;
-        prazoPac = 7;
-        valorSedex = 42.90;
-        prazoSedex = 3;
-      } else {
-        valorPac = 28.90;
-        prazoPac = 12;
-        valorSedex = 65.90;
-        prazoSedex = 5;
-      }
-
-      const novasOpcoes = [
-        { tipo: 'Correios PAC', valor: valorPac, prazo: prazoPac, local: localTexto },
-        { tipo: 'Correios SEDEX', valor: valorSedex, prazo: prazoSedex, local: localTexto }
-      ];
+      const novasOpcoes = data.opcoes.map((opcao) => ({
+        tipo: opcao.servico,
+        valor: opcao.preco,
+        prazo: opcao.prazo_dias_uteis,
+        local: localTexto,
+      }));
 
       setOpcoesFrete(novasOpcoes);
       setFreteSelecionado(novasOpcoes[0]);
@@ -215,6 +196,22 @@ Gostaria de prosseguir com o pagamento.`;
           </div>
           
           <p className="produto-parcelamento">12x de R$30,52</p>
+          <p className="produto-promocao">Compre mais, pague menos</p>
+
+          {/* Tabela de Descontos */}
+          <table className="tabela-descontos">
+            <thead>
+              <tr>
+                <th>Quantidade</th>
+                <th>Desconto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>2</td><td>5% OFF</td></tr>
+              <tr><td>3</td><td>10% OFF</td></tr>
+              <tr><td>4</td><td>15% OFF</td></tr>
+            </tbody>
+          </table>
           <p className="combinado-aviso">Pode ser combinado com qualquer produto da loja.</p>
 
           {/* Seletor de Tamanho */}
@@ -347,38 +344,16 @@ Gostaria de prosseguir com o pagamento.`;
       </section>
 
       {/* Floating Histórico (bottom right) */}
-      {mostrarHistorico && (
-        <div className="floating-historico-small">
-          <div className="btn-historico" style={{ paddingRight: '8px' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022l-.074.997zm2.004.45a7.003 7.003 0 0 0-.985-.299l.219-.976c.383.086.76.2 1.126.342l-.36.933zm1.37.71a7.01 7.01 0 0 0-.439-.27l.493-.87a8.025 8.025 0 0 1 .979.654l-.615.789a6.996 6.996 0 0 0-.418-.302zm1.834 1.79a6.99 6.99 0 0 0-.653-.796l.724-.69c.27.285.52.59.747.91l-.818.576zm.744 1.352a7.08 7.08 0 0 0-.214-.468l.893-.45a7.976 7.976 0 0 1 .45 1.088l-.95.313a7.023 7.023 0 0 0-.179-.483zm.53 2.507a6.991 6.991 0 0 0-.1-1.025l.985-.17c.067.386.106.778.116 1.17l-1 .025zm-.131 1.538c.033-.17.06-.339.081-.51l.993.123a7.957 7.957 0 0 1-.23 1.155l-.964-.267c.046-.165.086-.332.12-.501zm-.952 2.379c.184-.29.346-.594.486-.908l.914.405c-.16.36-.345.706-.555 1.038l-.845-.535zm-.964 1.205c.122-.122.239-.248.35-.378l.758.653a8.073 8.073 0 0 1-.401.432l-.707-.707z"/>
-              <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0v1z"/>
-              <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5z"/>
-            </svg>
-            <span style={{ cursor: 'pointer' }}>Histórico</span>
-            <button 
-              onClick={(e) => { e.stopPropagation(); setMostrarHistorico(false); }} 
-              style={{ 
-                marginLeft: '5px', 
-                background: '#e0e0e0', 
-                border: 'none', 
-                borderRadius: '50%', 
-                width: '22px', 
-                height: '22px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '14px', 
-                color: '#333', 
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              &times;
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="floating-historico-small">
+        <button className="btn-historico">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022l-.074.997zm2.004.45a7.003 7.003 0 0 0-.985-.299l.219-.976c.383.086.76.2 1.126.342l-.36.933zm1.37.71a7.01 7.01 0 0 0-.439-.27l.493-.87a8.025 8.025 0 0 1 .979.654l-.615.789a6.996 6.996 0 0 0-.418-.302zm1.834 1.79a6.99 6.99 0 0 0-.653-.796l.724-.69c.27.285.52.59.747.91l-.818.576zm.744 1.352a7.08 7.08 0 0 0-.214-.468l.893-.45a7.976 7.976 0 0 1 .45 1.088l-.95.313a7.023 7.023 0 0 0-.179-.483zm.53 2.507a6.991 6.991 0 0 0-.1-1.025l.985-.17c.067.386.106.778.116 1.17l-1 .025zm-.131 1.538c.033-.17.06-.339.081-.51l.993.123a7.957 7.957 0 0 1-.23 1.155l-.964-.267c.046-.165.086-.332.12-.501zm-.952 2.379c.184-.29.346-.594.486-.908l.914.405c-.16.36-.345.706-.555 1.038l-.845-.535zm-.964 1.205c.122-.122.239-.248.35-.378l.758.653a8.073 8.073 0 0 1-.401.432l-.707-.707z"/>
+            <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0v1z"/>
+            <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5z"/>
+          </svg>
+          Histórico
+        </button>
+      </div>
     </div>
   );
 }
