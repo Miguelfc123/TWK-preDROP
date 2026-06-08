@@ -1,3 +1,5 @@
 .vercel
 .env*
 node_modules
+Frontend-App/build
+Frontend-App/node_modules
