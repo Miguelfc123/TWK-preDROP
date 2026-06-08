@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import PaginaInicial from './pages/PaginaInicial';
-import PaginaProduto from './pages/PaginaProduto';
+import HomePage from './pages/HomePage';
+import ProductPage from './pages/ProductPage';
 import Header from './components/Header';
 import TopBanner from './components/TopBanner';
 import Footer from './components/Footer';
@@ -39,8 +39,8 @@ function AppContent() {
       <Header scrolled={scrolled} />
       {!isSearching && <TopBanner hidden={scrolled} />}
       <Routes>
-        <Route path="/" element={<PaginaInicial />} />
-        <Route path="/produto/:id" element={<PaginaProduto />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/product/:id" element={<ProductPage />} />
       </Routes>
       <Footer />
     </div>
